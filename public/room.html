@@ -102,16 +102,18 @@
     }
 
     checkSet = function() {
-
+      //console.log(selectedCards);
       var score = 0;
       for (var i = 0; i < 3; i++) {
         score = 0;
         for (var j = 0; j < 3; j++) {
           score += board.cards[selectedCards[j]][i];
-        //  console.log(i + " " + board.cards[selectedCards[j]][i] + " " +  board.cards[selectedCards[j]]);
+          //console.log( board.cards[selectedCards[j]]);
         }
         //console.log(score);
-        if (score % 3) return false;
+        if (score % 3){
+          //console.log(score);
+          return false;}
       }
       return true;
     }
