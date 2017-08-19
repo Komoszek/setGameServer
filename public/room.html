@@ -14,7 +14,6 @@
     var board = {"cards":{}};
     var hash = document.location.pathname;
     hash = hash.split("/");
-    //console.log(hash);
 
     cardToImg = function(a) {
       var k;
@@ -44,32 +43,29 @@
         return k;
     }
 
-    var socket = io.connect();
+    var socket = io('/room');
 
     socket.on('connect', function() {
       socket.emit('room', hash[2]);
     });
 
-    socket.on('news', function(msg) {
-      console.log(msg);
+    socket.on('game-end', function() {
+      alert("koniec");
     });
+
 
     socket.on('game-change', function(newBoard) {
-      console.log(newBoard);
-
       for(var card in newBoard){
         board.cards[card]=newBoard[card];
+        if(board.cards[card] !== -1)
         document.getElementsByClassName("card")[card].getElementsByTagName('img')[0].src = "../icons/" + cardToImg(board.cards[card]);
+        else
+        document.getElementsByClassName("card")[card].getElementsByTagName('img')[0].src = "";
       }
-
-      //updateBoard(newBoard);
     });
 
 
-    a = function() {
-      socket.emit('create-room', hash[2]);
 
-    }
     b = function() {
       socket.emit('dupa', 'dupa');
 
@@ -86,33 +82,24 @@
 
       for (var i = 0; i < board.size; i++) {
         document.getElementsByClassName("card")[i].getElementsByTagName('img')[0].src = "../icons/" + cardToImg(board.cards[i]);
-      //  console.log(document.getElementsByClassName("card")[i].getElementsByTagName('img')[0].src);
       }
 
     });
 
     startGame = function() {
+      console.log("lol");
+
       socket.emit('start-game');
     }
 
-    updateBoard = function(newBoard) {
-      for (var i = 0; i < newBoard.length; i++) {
-
-      }
-    }
-
     checkSet = function() {
-      //console.log(selectedCards);
       var score = 0;
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < 4; i++) {
         score = 0;
         for (var j = 0; j < 3; j++) {
           score += board.cards[selectedCards[j]][i];
-          //console.log( board.cards[selectedCards[j]]);
         }
-        //console.log(score);
         if (score % 3){
-          //console.log(score);
           return false;}
       }
       return true;
@@ -131,24 +118,16 @@
 
       if(selectedCards.length  == 3){
 
-        if(checkSet()){
+        if(checkSet())
           socket.emit('check-set', selectedCards.sort(function(a, b){return a-b}));
 
-        }
-
-
-        for(var j=0;j<selectedCards.length;j++){
+        for(var j=0;j<selectedCards.length;j++)
           document.getElementById("card_" + selectedCards[j]).className = "card";
-        }
+
         selectedCards = [];
       }
     }
   </script>
-
-  <input type="button" onclick="a()" />
-  <input type="button" onclick="b()" />
-
-  <a href="/room/ByFEvlM_b">s</a>
 
 </body>
 

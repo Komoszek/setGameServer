@@ -3,7 +3,27 @@
   <h1>Dupa</h1>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-  var socket = io.connect("localhost:3000");
+  var socket = io('/lobby');
+
+
+  a = function() {
+    socket.emit('create-room');
+  }
+
+
+      socket.on('news', function(msg) {
+        console.log(msg);
+      });
+
+  socket.on('redirect-room', function(hash){
+    console.log(hash);
+    window.location.replace("room/" + hash);
+
+  });
+
+
   </script>
+
+  <input type="button" onclick="a()" />
 </body>
 </html>
