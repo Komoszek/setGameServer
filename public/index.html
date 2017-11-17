@@ -6,6 +6,17 @@
   <script>
     var socket = io('/lobby');
 
+    socket.on('error', function(err) {
+      console.log("a");
+  console.log('The server sent an error', err);
+});
+
+
+
+    socket.on('session', function(sessionid) {
+      console.log(sessionid);
+      document.cookie = 'sessionid=' + sessionid + '; path=/';
+    });
 
     newRoom = function(mode,timeout) {
       var roomObj = {"name":"dupa chuj"};
@@ -26,6 +37,9 @@
     socket.on('news', function(msg) {
       console.log(msg);
     });
+
+
+
 
     socket.on('redirect-room', function(hash) {
       console.log(hash);
