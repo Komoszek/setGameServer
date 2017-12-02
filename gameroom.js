@@ -304,9 +304,9 @@ gameRoom.prototype.checkSet = function(selectedSet, session) {
     this.crossed.push(fixedSelectedSet);
     fixedSelectedSet = this.crossed[this.crossed.length - 1];
   }
-
   if(this.scoreboard.hasOwnProperty(session)){
     this.scoreboard[session].score++;
+    io.in(this.hash).emit('change-score', this.scoreboard[session]);
   }
 
   setTimeout(() => {
@@ -322,26 +322,23 @@ gameRoom.prototype.checkSet = function(selectedSet, session) {
 }
 
 gameRoom.prototype.connectUser = function(client) {
-
-  if(this.players.hasOwnProperty(client.sessionid)  && !this.players[client.sessionid].hasOwnProperty(client.io)){
-    this.players[client.sessionid].io.push(client.io);
+  if(this.players.hasOwnProperty(client.sessionId)){
     console.log("weszlo");
   }
-  else if(!this.players.hasOwnProperty(client.sessionid)){
+  else if(!this.players.hasOwnProperty(client.sessionId)){
 
-    this.players[client.sessionid]={"name":client.name,
-    "io":[client.io]};
-    this.scoreboard[client.sessionid] = {"score": 0,
-  "name":client.name};
+    this.players[client.sessionId]={"username":client.username,"userId":client.userId};
+    this.scoreboard[client.sessionId] = {"score": 0,
+  "username":client.username,
+  "userId":client.userId};
   }
 }
 
 gameRoom.prototype.disconnectUser = function(client) {
 
-  console.log("clientio",client.io);
-  if(this.players.hasOwnProperty(client.sessionid) && this.players[client.sessionid].io.indexOf(client.io) !== -1){
+  if(this.players.hasOwnProperty(client.sessionid)){
     console.log(true);
-    this.players[client.sessionid].io.splice(this.players[client.sessionid].io.indexOf(client.io),1);
+    delete this.players[client.sessionid];
   }else{
     console.log(false);
   }

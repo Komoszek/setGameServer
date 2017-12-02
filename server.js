@@ -39,15 +39,7 @@ fs.readFile('db.json', 'UTF8', (err, data) => {
     }
   }
 });
-/*
-lobb.use(function(socket, next){
-  if (socket.request.headers.cookie) {
 
-return next();
-  }
-  next('cycki', true);
-});
-*/
 
 var saveDatabase = () => {
   fs.writeFile('db.json', JSON.stringify(db), (err) => {
@@ -57,18 +49,29 @@ var saveDatabase = () => {
 }
 
 var sessionHandler = (socket) => {
-  cookies = cookie.parse(socket.handshake.headers.cookie);
+  console.log(socket.handshake.headers.cookie, "hmm");
+  if(socket.handshake.headers.cookie !== undefined){
+    cookies = cookie.parse(socket.handshake.headers.cookie);
+  }
+  else
+    cookies = {};
   if(cookies.sessionid === undefined || !db.sessions.hasOwnProperty(cookies.sessionid)){
     do{
       var sessionid = randomstring.generate();
+      var userId = randomstring.generate();
     }while(db.sessions[sessionid] !== undefined)
     db.sessions[sessionid] = {};
+    db.sessions[sessionid].userId = userId;
 
-    socket.emit('session', sessionid);
+    socket.emit('session', {"sessionid":sessionid,"userId":userId});
     saveDatabase();
-    return;
+  } else {
+    var sessionid = cookies.sessionid;
+    if(cookies.userId === undefined || !cookies.hasOwnProperty("userId")){
+      socket.emit('session', {"sessionid":sessionid,"userId":db.sessions[sessionid].userId});
+    }
   }
-  return true;
+  return sessionid;
 }
 
 app.use(express.static(__dirname + '/public'));
@@ -85,6 +88,8 @@ app.get('/room/:hash', (req, res) => {
   else
     res.sendFile(path.join(__dirname, '/public/404.html'));
 });
+    cookies = {};
+    cookie.sessionid = undefined;
 
 lobb.on('connection', socket => {
   sessionHandler(socket);
@@ -101,25 +106,36 @@ lobb.on('connection', socket => {
 });
 
 rom.on('connection', socket => {
-
-  sessionHandler(socket);
+  var session = sessionHandler(socket);
 
   var hash = socket.handshake.query['room'];
   socket.join(hash);
   var room = null;
-
-  var cookies = cookie.parse(socket.handshake.headers.cookie);
   clientOBJ = {
-    "name": "dupa",
-    "io": cookies.io,
-    "sessionid": cookies.sessionid
+    "username": "dupa",
+    "sessionId": session,
+    "userId": db.sessions[session].userId
   };
+  console.log(session,clientOBJ);
 
   if (db.rooms.hasOwnProperty(hash)) {
     room = db.rooms[hash];
     room.connectUser(clientOBJ);
-    if (db.rooms[hash].started)
+    //rom.in(hash).emit('user-connected',{"name":clientOBJ.name,"session"})
+    if (db.rooms[hash].started){
+      console.log("send");
+
       rom.in(hash).emit('board-setup', db.rooms[hash].onBoard.concat(db.rooms[hash].remainingCards.length, db.rooms[hash].mode));
+      var players = {};
+      for(var key in db.rooms[hash].scoreboard){
+        console.log(db.rooms[hash].scoreboard[key], "KLIENT",db.rooms[hash].scoreboard[key].score);
+        players[db.rooms[hash].scoreboard[key].userId] = {"username":db.rooms[hash].scoreboard[key].username,
+      "score":db.rooms[hash].scoreboard[key].score}
+      }
+      console.log(players,"dlaczego kurwa");
+      rom.in(hash).emit('scoreboard-setup', players);
+
+    }
   }
 
   socket.on('start-game', () => {
@@ -130,7 +146,7 @@ rom.on('connection', socket => {
   });
 
   socket.on('check-set', selectedSet => {
-    if (db.rooms[hash].checkSet(selectedSet, cookies.sessionid)) {
+    if (db.rooms[hash].checkSet(selectedSet, clientOBJ.sessionId)) {
       setTimeout(function() {
         saveDatabase()
       }, db.rooms[hash].cardTimeout + 100);
@@ -138,9 +154,9 @@ rom.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
-    var disconnectCookie = cookie.parse(socket.handshake.headers.cookie);
+    //var disconnectCookie = cookie.parse(socket.handshake.headers.cookie);
     if (room !== null)
-      room.disconnectUser(disconnectCookie);
+      room.disconnectUser(clientOBJ);
   });
 
 });

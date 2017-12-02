@@ -1,0 +1,29 @@
+.card {
+  margin:10px;
+  float:left;
+}
+
+[data-selected="true"] {
+
+  border-radius:5%;
+}
+
+[data-selected="true"] > img{
+  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+  border-radius: 5%;
+}
+
+
+[data-taken="true"] {
+
+  opacity:0.5;
+  background-color: rgba(0,0,0,0.5);
+  border-radius:5%;
+
+}
+
+
+[data-you="true"] {
+
+  color:red;
+}
