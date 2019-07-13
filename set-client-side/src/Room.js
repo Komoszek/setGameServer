@@ -92,6 +92,7 @@ class Board extends Component{
   constructor(props){
     super(props);
     this.state = {
+      started: false,
       cards: [],
       selectedCards: [],
       mode: 'std',
@@ -111,7 +112,9 @@ class Board extends Component{
       for (var i = 0; i < 4; i++) {
         score = 0;
         for (var j = 0; j < 3; j++) {
-          score +=cards[selectedCards[j]][i];
+          if(cards[selectedCards[j]][i] === undefined)
+            return false;
+          score += cards[selectedCards[j]][i];
         }
         if (score % 3) return false;
       }
@@ -217,7 +220,8 @@ _setupBoard(newBoard){
     default:
       ;
   }
-  this.setState({cards:cards,size:size,remainingCards:remainingCards,setLength:setLength,mode:mode,changed:changed});
+
+  this.setState({cards:cards,size:size,remainingCards:remainingCards,setLength:setLength,mode:mode,changed:changed,started:true});
 };
 
 _handleTakenset(takenset){
@@ -260,7 +264,7 @@ _gameChenge(newBoard){
         changed[card][1] = changed[newBoard[card]][1];
         if (changed[newBoard[card]][0] === 'true') {
           changed[card][0] = changed[newBoard[card]][0];
-          selectedCards[newBoard[card]] = card;
+          selectedCards[selectedCards.indexOf(card)] = newBoard[card];
         }
       } else {
         if(card < cards.length){
@@ -278,8 +282,20 @@ _gameChenge(newBoard){
   }
   this.setState({remainingCards:remainingCards,cards:cards,changed:changed,selectedCards:selectedCards});
 }
+  _startGame(){
+    console.log("dupa");
+    socket.emit('start-game');
+  }
+
 
   render(){
+
+    console.log(this.state.started);
+    if(this.state.started === false)
+      return(<div id="boardContainer">
+        <input type="button" value="START GAME" onClick={() => this._startGame()}/>
+      </div>
+      );
 
     var cards = [];
 
@@ -297,10 +313,9 @@ _gameChenge(newBoard){
 
 function ScoreboardItem(props){
   return(
-    <li><div><div data-you={props.you}>{props.username}</div><div className="score">{props.score}</div></div></li>
+    <li className="scoreboardItem"><div className="username" data-you={props.you}><span>{props.username}</span></div><div className="score"><span className="score">{props.score}</span></div></li>
   );
 }
-
 class Scoreboard extends Component{
   constructor(props){
     super(props);
@@ -312,12 +327,14 @@ class Scoreboard extends Component{
 
   renderItem(i){
     var player = this.state.players[i];
-    console.log(this.state.you);
     if(this.state.you === i)
     return(<ScoreboardItem key={i} username={player.username}  you="true" score={player.score}/>);
     else
     return(<ScoreboardItem key={i} username={player.username}  you="" score={player.score}/>);
-  };b
+  };
+  renderDevider(i){
+    return(<hr key={"Devider"+i} className="scoreboardDevider"/>);
+  };
 
   componentDidMount(){
     socket.on('change-score', (data) => this._handleScoreboardChange(data));
@@ -328,13 +345,11 @@ class Scoreboard extends Component{
   _handleScoreboardChange(data){
     var players = this.state.players;
     players[data.userId].score = data.score;
-    console.log(players,"chujchujchuj");
     this.setState({players: players});
   }
 
   _handleScoreboardSetup(data){
     var players = data;
-    console.log(data,"penispenis")
     for(var key in players){
       players[key].username = key;
     }
@@ -361,16 +376,15 @@ class Scoreboard extends Component{
     }
 
     topScoreboard.sort((a,b) => {return players[a].score < players[b].score});
-    console.log(topScoreboard,players);
     var k = 5 > topScoreboard.length ? topScoreboard.length : 5;
     for(var i=0;i<k;i++){
-      console.log("dupa");
+      if(i !== 0)
+      Items.push(this.renderDevider(i));
       Items.push(this.renderItem(topScoreboard[i]));
     }
 
-    console.log(Items);
     return(
-      <div className="scoreboardContainer">
+      <div id="scoreboardContainer">
       <ul>
       {Items}
       </ul>
@@ -384,16 +398,33 @@ class Room extends Component {
   constructor(props){
     super(props);
     this.state = {
+      err404: false,
 
     }
   }
+  componentDidMount(){
+    socket.on('404notfound', (data) => this._handle404(data));
+  }
+
+  _handle404(data){
+
+      this.setState({err404: data});
+  }
 
   render() {
-    return (<div>
-      <Scoreboard />
-        <Board />
-        </div>
-    );
+    if(this.state.err404 === false){
+      return (<div>
+        <Scoreboard />
+          <Board />
+          </div>
+      );
+    } else {
+      return (<div>
+        <span>404</span>
+          </div>
+      );
+    }
+
   }
 }
 export default Room;

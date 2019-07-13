@@ -14,8 +14,6 @@ const rom = io.of('/room');
 
 var db = '';
 
-// TODO Rysowanie zakliniętych, aktualni gracze
-
 fs.readFile('db.json', 'UTF8', (err, data) => {
   if (err) {
     throw err
@@ -49,7 +47,6 @@ var saveDatabase = () => {
 }
 
 var sessionHandler = (socket) => {
-  console.log(socket.handshake.headers.cookie, "hmm");
   if(socket.handshake.headers.cookie !== undefined){
     cookies = cookie.parse(socket.handshake.headers.cookie);
   }
@@ -74,27 +71,20 @@ var sessionHandler = (socket) => {
   return sessionid;
 }
 
-app.use(express.static(__dirname + '/public'));
-// Store all HTML files in view folder.
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/index.html'));
-  // It will find and locate index.html from View or Scripts
-});
-
-app.get('/room/:hash', (req, res) => {
-  if ((db.rooms).hasOwnProperty(req.params.hash))
-    res.sendFile(path.join(__dirname, '/public/room.html'));
-  else
-    res.sendFile(path.join(__dirname, '/public/404.html'));
-});
     cookies = {};
     cookie.sessionid = undefined;
 
 lobb.on('connection', socket => {
   sessionHandler(socket);
 
-  lobb.emit('news', Object.keys(db.rooms));
+  var rooms = [];
+
+  for(var key in db.rooms){
+    rooms.push({name:db.rooms[key].roomName,
+    id:key});
+  }
+  console.log(rooms);
+  lobb.emit('news', rooms);
 
   socket.on('create-room', (roomOptions) => {
     roomOptions.hash = shortid.generate();
@@ -106,57 +96,56 @@ lobb.on('connection', socket => {
 });
 
 rom.on('connection', socket => {
-  var session = sessionHandler(socket);
+  socket.session = sessionHandler(socket);
 
-  var hash = socket.handshake.query['room'];
-  socket.join(hash);
-  var room = null;
-  clientOBJ = {
+  socket.hash = socket.handshake.query['room'];
+  socket.join(socket.hash);
+  socket.room = null;
+
+  socket.clientOBJ = {
     "username": "dupa",
-    "sessionId": session,
-    "userId": db.sessions[session].userId
+    "sessionId": socket.session,
+    "userId": db.sessions[socket.session].userId
   };
-  console.log(session,clientOBJ);
 
-  if (db.rooms.hasOwnProperty(hash)) {
-    room = db.rooms[hash];
-    room.connectUser(clientOBJ);
+  if (db.rooms.hasOwnProperty(socket.hash)) {
+    socket.room = db.rooms[socket.hash];
+    socket.room.connectUser(socket.clientOBJ);
     //rom.in(hash).emit('user-connected',{"name":clientOBJ.name,"session"})
-    if (db.rooms[hash].started){
-      console.log("send");
+    if (db.rooms[socket.hash].started){
 
-      rom.in(hash).emit('board-setup', db.rooms[hash].onBoard.concat(db.rooms[hash].remainingCards.length, db.rooms[hash].mode));
-      var players = {};
-      for(var key in db.rooms[hash].scoreboard){
-        console.log(db.rooms[hash].scoreboard[key], "KLIENT",db.rooms[hash].scoreboard[key].score);
-        players[db.rooms[hash].scoreboard[key].userId] = {"username":db.rooms[hash].scoreboard[key].username,
-      "score":db.rooms[hash].scoreboard[key].score}
+      rom.in(socket.hash).emit('board-setup', db.rooms[socket.hash].onBoard.concat(db.rooms[socket.hash].remainingCards.length, db.rooms[socket.hash].mode));
+      socket.players = {};
+      for(var key in db.rooms[socket.hash].scoreboard){
+        socket.players[db.rooms[socket.hash].scoreboard[key].userId] = {"username":db.rooms[socket.hash].scoreboard[key].username,
+      "score":db.rooms[socket.hash].scoreboard[key].score}
       }
-      console.log(players,"dlaczego kurwa");
-      rom.in(hash).emit('scoreboard-setup', players);
+      rom.in(socket.hash).emit('scoreboard-setup', socket.players);
 
     }
+  } else {
+    rom.in(socket.hash).emit('404notfound', true);
   }
 
   socket.on('start-game', () => {
-    if (db.rooms[hash].started !== true) {
-      db.rooms[hash].startGame();
+    if (db.rooms[socket.hash].started !== true) {
+      db.rooms[socket.hash].startGame();
       saveDatabase();
     }
   });
 
   socket.on('check-set', selectedSet => {
-    if (db.rooms[hash].checkSet(selectedSet, clientOBJ.sessionId)) {
+    if (db.rooms[socket.hash].checkSet(selectedSet, socket.clientOBJ.sessionId)) {
       setTimeout(function() {
         saveDatabase()
-      }, db.rooms[hash].cardTimeout + 100);
+      }, db.rooms[socket.hash].cardTimeout + 100);
     }
   });
 
   socket.on('disconnect', () => {
     //var disconnectCookie = cookie.parse(socket.handshake.headers.cookie);
-    if (room !== null)
-      room.disconnectUser(clientOBJ);
+    if (socket.room !== null)
+      socket.room.disconnectUser(socket.clientOBJ);
   });
 
 });

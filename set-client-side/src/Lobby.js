@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import logo from './logo.svg';
+import './lobby.css';
 import openSocket from 'socket.io-client';
 import Cookies from 'universal-cookie';
 
@@ -9,43 +10,12 @@ const userCookies = new Cookies();
 const socket = openSocket(':3001/lobby');
 
   socket.on('error', function(err) {
-    console.log("a");
 console.log('The server sent an error', err);
 });
 
-/*
 
-
-
-  newRoom = function(mode,timeout) {
-    var roomObj = {"name":"dupa chuj"};
-    switch(mode){
-      case "sup":
-      roomObj.mode = "sup";
-      break;
-      default:
-      ;
-    }
-
-    roomObj.timeout = timeout;
-
-
-    socket.emit('create-room', roomObj);
-  }
-
-
-
-
-
-
-  socket.on('redirect-room', function(hash) {
-    console.log(hash);
-    window.location.replace("room/" + hash);
-
-  });
-*/
 function ListItem(props){
-  return(<a href={'/room/' + props.name}><li><div ><div>{props.name}</div></div></li></a>);
+  return(<a href={'/room/' + props.id}><div className="roomContainer"><div>{props.name}</div></div></a>);
 
 }
 
@@ -59,7 +29,6 @@ class GameList extends Component{
   }
 
   componentDidMount(){
-    console.log("suk");
     socket.on('session', (data) => this._handleCookies(data));
     socket.on('news',  (data) => this._handleRooms(data));
 
@@ -71,11 +40,12 @@ class GameList extends Component{
   }
 
   _handleRooms(data){
+
     this.setState({rooms:data});
-    console.log(data);
   }
   renderItem(room){
-    return(<ListItem key={room} name={room}/>);
+    console.log(room);
+    return(<ListItem key={room.id} id={room.id} name={room.name}/>);
   }
 
 
@@ -86,9 +56,89 @@ class GameList extends Component{
 
     for(var i = 0; i <room.length ;i++)
       Items.push(this.renderItem(room[i]));
-    return (<div><ul>{Items}</ul></div>);
+    return (<div className="roomlist">{Items}</div>);
   }
 
 }
 
-export default GameList;
+class CreateRoom extends Component{
+  constructor(props){
+    super(props);
+    this.state = {
+      show: true,
+      name: 'Room',
+      mode: 'std',
+      timeout: 0,
+    };
+    this.handleChange = this.handleChange.bind(this);
+    this._createRoom = this._createRoom.bind(this);
+
+  }
+
+
+    componentDidMount(){
+      console.log("dd");
+     socket.on('redirect-room', (data) => this._redirect(data));
+    }
+
+    _redirect(hash){
+      window.location.replace("room/" + hash);
+    }
+
+  handleChange(event) {
+
+var target = event.target;
+  var value = target.value;
+  var name = target.name;
+
+    this.setState({[name]: value});
+  }
+
+  _createRoom(event){
+
+    var roomObj = {name:this.state.name,
+                  mode:this.state.mode,
+                  timeout:this.state.timeout*1000
+                };
+    socket.emit('create-room', roomObj);
+    event.preventDefault();
+
+  }
+
+  render(){
+    return(
+      <div>
+        <form onSubmit={this._createRoom}>
+        <div>
+        <input id="name" type="text" name="name" value={this.state.name} onChange={this.handleChange}/>
+        </div>
+        <div>
+        <input id="timeout" type="number" name="timeout" value={this.state.timeout} onChange={this.handleChange}/>
+        </div>
+        <div>
+        <select id="selectmode" name="mode" value={this.state.mode} onChange={this.handleChange}>
+        <option value="std" >standard</option>
+        <option value="sup" >Super</option>
+        </select>
+        </div>
+        <input type="submit" value="Submit"/>
+      </form>
+      </div>
+    );
+  }
+
+}
+
+class Full extends Component{
+  constructor(props){
+    super(props);
+    this.state = {
+
+    };
+  }
+  render(){
+    return(<div><GameList/><CreateRoom/></div>);
+  }
+}
+
+export default Full;

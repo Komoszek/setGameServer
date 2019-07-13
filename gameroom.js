@@ -25,8 +25,6 @@ var gameRoom = function({hash = '', name = hash,  timeout = '0', mode='std'} = {
   if(allowedModes.indexOf(mode) === -1)
     mode = 'std';
 
-
-
   this.remainingCards = [];
 
   for (var i = 0; i < 3; i++)
@@ -45,10 +43,6 @@ var gameRoom = function({hash = '', name = hash,  timeout = '0', mode='std'} = {
   this.scoreboard = {};
 
   shuffle(this.remainingCards);
-}
-
-setIO = function(newIO) {
-  io = newIO;
 }
 
 gameRoom.prototype.verifySet = function(set) {
@@ -123,6 +117,14 @@ gameRoom.prototype.startGame = function() {
     this.started = true;
   }
   io.in(this.hash).emit('board-setup', this.onBoard.concat(this.remainingCards.length, this.mode));
+
+  var players = {};
+  for(var key in this.scoreboard){
+    players[this.scoreboard[key].userId] = {"username":this.scoreboard[key].username,
+  "score":this.scoreboard[key].score}
+  }
+  io.in(this.hash).emit('scoreboard-setup', players);
+
 }
 
 gameRoom.prototype.setAvailable = function() {
@@ -282,6 +284,7 @@ gameRoom.prototype.gameStep = function(set) {
 }
 
 gameRoom.prototype.checkSet = function(selectedSet, session) {
+  console.log(session);
   if (!this.verifySet(selectedSet))
     return false;
 
@@ -305,6 +308,7 @@ gameRoom.prototype.checkSet = function(selectedSet, session) {
     fixedSelectedSet = this.crossed[this.crossed.length - 1];
   }
   if(this.scoreboard.hasOwnProperty(session)){
+    console.log(this.scoreboard[session],"chujchujchuj");
     this.scoreboard[session].score++;
     io.in(this.hash).emit('change-score', this.scoreboard[session]);
   }
@@ -342,6 +346,10 @@ gameRoom.prototype.disconnectUser = function(client) {
   }else{
     console.log(false);
   }
+}
+
+setIO = function(newIO) {
+  io = newIO;
 }
 
 module.exports = gameRoom;
